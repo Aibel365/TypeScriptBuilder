@@ -1,55 +1,52 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace TypeScriptBuilder
 {
-    public class TSExclude : Attribute
+    public class TsExclude : Attribute
     {
     }
 
     [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property | AttributeTargets.Parameter)]
-    public class TSAny : Attribute
+    public class TsAny : Attribute
     {
     }
 
     [AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct)]
-    public class TSClass : Attribute
+    public class TsClass : Attribute
     {
     }
 
     [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
-    public class TSInitialize : Attribute
+    public class TsInitialize : Attribute
     {
         public readonly string Body;
-        public TSInitialize(string body)
+        public TsInitialize(string body)
         {
             Body = body;
         }
-        public TSInitialize()
+        public TsInitialize()
         {
             Body = null;
         }
     }
 
     [AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct | AttributeTargets.Enum)]
-    public class TSMap : Attribute
+    public class TsMap : Attribute
     {
         public readonly string Name;
-        public TSMap(string name)
+        public TsMap(string name)
         {
             Name = name;
         }
     }
 
     [AttributeUsage(AttributeTargets.Class)]
-    public class TSFlat : Attribute
+    public class TsFlat : Attribute
     {
     }
 
     [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
-    public class TSOptional : Attribute
+    public class TsOptional : Attribute
     {
     }
 }

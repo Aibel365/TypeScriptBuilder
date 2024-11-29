@@ -9,16 +9,12 @@ namespace TypeScriptBuilder
 {
     public class TypeScriptGenerator
     {
-        readonly HashSet<Type>
-            _defined = new HashSet<Type>();
-        readonly Stack<Type>
-            _toDefine = new Stack<Type>();
-        readonly SortedDictionary<string, CodeTextBuilder>
-            _builder = new SortedDictionary<string, CodeTextBuilder>();
+        readonly HashSet<Type> _defined = new();
+        readonly Stack<Type> _toDefine = new();
+        private readonly SortedDictionary<string, CodeTextBuilder> _builder = new();
 
         readonly TypeScriptGeneratorOptions _options;
-        readonly HashSet<Type>
-            _exclude;
+        readonly HashSet<Type> _exclude;
 
         public TypeScriptGenerator(TypeScriptGeneratorOptions options = null)
         {
@@ -32,7 +28,7 @@ namespace TypeScriptBuilder
             return this;
         }
 
-        public TypeScriptGenerator AddCSType(Type type)
+        public TypeScriptGenerator AddCsType(Type type)
         {
             if (_defined.Add(type))
                 _toDefine.Push(type);
@@ -54,7 +50,7 @@ namespace TypeScriptBuilder
                 return type.Name;
 
             var
-                map = type.GetTypeInfo().GetCustomAttribute<TSMap>(false);
+                map = type.GetTypeInfo().GetCustomAttribute<TsMap>(false);
 
             switch (Type.GetTypeCode(type))
             {
@@ -64,7 +60,7 @@ namespace TypeScriptBuilder
                 case TypeCode.Int64:
                     if (ti.IsEnum)
                     {
-                        AddCSType(type);
+                        AddCsType(type);
 
                         return map == null ? type.Name : map.Name;
                     }
@@ -109,14 +105,14 @@ namespace TypeScriptBuilder
                         if (genericType.GetInterfaces().Any(e => e.GetGenericTypeDefinition() == typeof(IEnumerable<>)))
                             return TypeName(generics[0]) + "[]";
 
-                        AddCSType(genericType);
+                        AddCsType(genericType);
 
-                        map = genericType.GetTypeInfo().GetCustomAttribute<TSMap>(false);
+                        map = genericType.GetTypeInfo().GetCustomAttribute<TsMap>(false);
 
                         return $"{NamespacePrefix(genericType)}{NormalizeInterface(map == null ? WithoutGeneric(genericType) : map.Name, forceClass)}<{string.Join(", ", generics.Select(e => TypeName(e)))}>";
                     }
 
-                    AddCSType(type);
+                    AddCsType(type);
 
                     return NamespacePrefix(type) + NormalizeInterface(map == null ? type.Name : map.Name, forceClass);
                 default:
@@ -130,15 +126,13 @@ namespace TypeScriptBuilder
         }
 
         string _namespace = "";
-        CodeTextBuilder Builder
-        {
-            get { return _builder[_namespace]; }
-        }
+        private CodeTextBuilder Builder => _builder[_namespace];
+
         void SetNamespace(Type type)
         {
             _namespace = type.Namespace;
 
-            if (!_builder.ContainsKey(_namespace))
+            if (_namespace != null && !_builder.ContainsKey(_namespace))
                 _builder[_namespace] = new CodeTextBuilder();
         }
 
@@ -147,7 +141,7 @@ namespace TypeScriptBuilder
             var
                 ti = type.GetTypeInfo();
 
-            if (ti.GetCustomAttribute<TSExclude>() != null || _exclude.Contains(type))
+            if (ti.GetCustomAttribute<TsExclude>() != null || _exclude.Contains(type))
                 return;
 
             SetNamespace(type);
@@ -167,8 +161,8 @@ namespace TypeScriptBuilder
             }
 
             bool
-                forceClass = ti.GetCustomAttribute<TSClass>() != null,
-                flat = ti.GetCustomAttribute<TSFlat>() != null;
+                forceClass = ti.GetCustomAttribute<TsClass>() != null,
+                flat = ti.GetCustomAttribute<TsFlat>() != null;
 
             Builder.Append($"export {(forceClass ? "class" : "interface")} {TypeName(type, forceClass)}");
 
@@ -186,32 +180,28 @@ namespace TypeScriptBuilder
                 flags |= BindingFlags.DeclaredOnly;
 
             // fields
-            GenerateFields(
-                type,
-                type.GetFields(flags),
+            GenerateFields(type.GetFields(flags),
                 f => f.FieldType,
                 f => f.IsInitOnly,
                 f => f.IsStatic,
                 forceClass);
 
             // properties
-            GenerateFields(
-                type,
-                type.GetProperties(flags),
+            GenerateFields(type.GetProperties(flags),
                 f => f.PropertyType,
-                f => false,
-                f => f.GetGetMethod().IsStatic,
+                _ => false,
+                f => f.GetGetMethod() is { IsStatic: true },
                 forceClass
             );
 
             Builder.CloseScope();
         }
 
-        void GenerateFields<T>(Type type, T[] fields, Func<T, Type> getType, Func<T, bool> getReadonly, Func<T, bool> getStatic, bool forceClass) where T : MemberInfo
+        private void GenerateFields<T>(T[] fields, Func<T, Type> getType, Func<T, bool> getReadonly, Func<T, bool> getStatic, bool forceClass) where T : MemberInfo
         {
             foreach (var f in fields)
             {
-                if (f.GetCustomAttribute<TSExclude>() == null)   // only fields defined in that type
+                if (f.GetCustomAttribute<TsExclude>() == null)   // only fields defined in that type
                 {
                     var fieldType = getType(f);
 
@@ -223,12 +213,12 @@ namespace TypeScriptBuilder
                     if (nullable != null)
                         fieldType = getType(f).GetGenericArguments()[0];
 
-                    var optional = f.GetCustomAttribute<TSOptional>() != null;
+                    var optional = f.GetCustomAttribute<TsOptional>() != null;
                     
                     // If not the attribute was used, check if the type is nullable
                     if (!optional)
                     {
-                        // Needs to fetch the Type from the PropertyInfo or FieldInfo-objects, for some resone
+                        // Needs to fetch the Type from the PropertyInfo or FieldInfo-objects, for some reason
                         // the fieldType-variable does not contain this info.
                         Type realType = null;
                         if (f is PropertyInfo pInfo)
@@ -260,10 +250,10 @@ namespace TypeScriptBuilder
                     Builder.Append(NormalizeField(f.Name));
                     Builder.Append(optional ? "?" : "");
                     Builder.Append(": ");
-                    Builder.Append(f.GetCustomAttribute<TSAny>() == null ? TypeName(fieldType) : "any");
+                    Builder.Append(f.GetCustomAttribute<TsAny>() == null ? TypeName(fieldType) : "any");
 
                     var
-                        init = f.GetCustomAttribute<TSInitialize>();
+                        init = f.GetCustomAttribute<TsInitialize>();
                     if (forceClass && init != null)
                         Builder.Append($" = {GenerateBody(init, f)}");
 
@@ -272,10 +262,11 @@ namespace TypeScriptBuilder
             }
         }
 
-        private string GenerateBody(TSInitialize attribute, MemberInfo info)
+        private string GenerateBody(TsInitialize attribute, MemberInfo info)
         {
             if (attribute.Body != null)
                 return attribute.Body;
+            
             if (info is FieldInfo)
             {
                 FieldInfo field = info as FieldInfo;
@@ -284,8 +275,11 @@ namespace TypeScriptBuilder
             else
             {
                 PropertyInfo property = info as PropertyInfo;
-                return JsonConvert.SerializeObject(property.GetRawConstantValue());
+                if (property != null) 
+                    return JsonConvert.SerializeObject(property.GetRawConstantValue());
             }
+
+            return string.Empty;
         }
 
         private void CommentClass(Type type)
@@ -326,9 +320,7 @@ namespace TypeScriptBuilder
             {
                 Builder.AppendLine($"/** {commentText} */");
             }
-
         }
-        
         
         public string NormalizeField(string name)
         {

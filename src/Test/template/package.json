@@ -1,0 +1,13 @@
+{
+  "name": "@aibel365/test-types",
+  "version": "0.0.3",
+  "description": "Generated Typescript interfaces for view- and writemodels",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "keywords": [],
+  "author": "Aibel",
+  "license": "MIT",
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  }
+}

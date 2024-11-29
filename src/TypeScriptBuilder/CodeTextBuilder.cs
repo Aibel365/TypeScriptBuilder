@@ -6,12 +6,9 @@ namespace TypeScriptBuilder
 {
     public class CodeTextBuilder
     {
-        readonly StringBuilder
-            _builder;
-        int
-            _openScopes = 0;
-        bool
-            _appending = false;
+        readonly StringBuilder _builder;
+        int _openScopes;
+        bool _appending;
 
         public CodeTextBuilder()
         {
@@ -26,11 +23,11 @@ namespace TypeScriptBuilder
 
         void CloseLine()
         {
-            if (_appending)
-            {
-                _builder.AppendLine();
-                _appending = false;
-            }
+            if (!_appending) 
+                return;
+            
+            _builder.AppendLine();
+            _appending = false;
         }
 
         public void OpenScope()
@@ -58,8 +55,7 @@ namespace TypeScriptBuilder
 
         public void AppendLine(string text = "")
         {
-            string
-                temp;
+            string temp;
 
             using (var reader = new StringReader(text))
                 while ((temp = reader.ReadLine()) != null)

@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
-using System.Text;
 using System.Xml;
 
 namespace TypeScriptBuilder
@@ -103,9 +102,7 @@ namespace TypeScriptBuilder
                 fullName = prefix + ":" + type.FullName + "." + name;
 
             var xmlDocument = XmlFromAssembly(type.Assembly);
-
-            var matchedElement = xmlDocument["doc"]["members"].SelectSingleNode("member[@name='" + fullName + "']") as XmlElement;
-
+            var matchedElement = xmlDocument?["doc"]?["members"]?.SelectSingleNode("member[@name='" + fullName + "']") as XmlElement;
             return matchedElement;
         }
 
@@ -128,9 +125,9 @@ namespace TypeScriptBuilder
         /// the XML file is not loaded and parsed on every single lookup</remarks>
         public static XmlDocument XmlFromAssembly(this Assembly assembly)
         {
-            if (FailCache.ContainsKey(assembly))
+            if (FailCache.TryGetValue(assembly, out var value))
             {
-                throw FailCache[assembly];
+                throw value;
             }
 
             try
@@ -138,7 +135,7 @@ namespace TypeScriptBuilder
 
                 if (!Cache.ContainsKey(assembly))
                 {
-                    // load the docuemnt into the cache
+                    // load the document into the cache
                     Cache[assembly] = XmlFromAssemblyNonCached(assembly);
                 }
 
@@ -147,7 +144,7 @@ namespace TypeScriptBuilder
             catch (Exception exception)
             {
                 FailCache[assembly] = exception;
-                throw exception;
+                throw;
             }
         }
 
@@ -158,7 +155,7 @@ namespace TypeScriptBuilder
         /// <returns>The XML document</returns>
         private static XmlDocument XmlFromAssemblyNonCached(Assembly assembly)
         {
-            var assemblyFilename = assembly.CodeBase;
+            var assemblyFilename = assembly.Location;
 
             const string prefix = "file:///";
 
